@@ -1,0 +1,18 @@
+{
+  "name": "extensions-message-system",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {},
+  "keywords": [],
+  "author": "TheEZIC",
+  "license": "ISC",
+  "dependencies": {
+    "webextension-polyfill": "^0.10.0"
+  },
+  "devDependencies": {
+    "@types/webextension-polyfill": "^0.10.1",
+    "@types/chrome": "^0.0.239",
+    "typescript": "^5.1.6"
+  }
+}
