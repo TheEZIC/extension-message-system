@@ -18,9 +18,16 @@ export class ContentMessage<Payload = any, Response = void> extends ScriptMessag
     return this;
   }
 
+  private _sendToCurrentTab: boolean = false;
+
+  public sendToCurrentTab(flag: boolean) {
+    this._sendToCurrentTab = flag;
+  }
+
   protected buildMessage() {
     const message = super.buildMessage();
     message.setTabs(Array.from(this._tabs));
+    message.setSendToCurrent(this._sendToCurrentTab);
 
     return message;
   }

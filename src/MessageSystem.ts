@@ -1,43 +1,43 @@
 import browser from "webextension-polyfill";
 import Command from "./Command";
-import { ISentMessage, ScriptType } from "./types";
-import NormalMessage from "./messages/messages/NormalMessage";
+import UnreplyableMessage from "./messages/sendable-messages/UnreplyableMessage";
 import TabManager from "./TabManager";
 import { FunctionalCommand } from "./types/ScriptCommand";
+import { ScriptType } from "./types";
+import { ISentMessageContent } from "./messages";
+import { ICommand } from "./types/ICommand";
+import { ICommandOptions } from "./types/ICommandOptions";
+import GetActiveTabCommand from "./system-commands/GetActiveTabCommand";
 
 export default class MessageSystem {
   private _commands: Command[];
 
   constructor(
     private readonly scriptType: ScriptType,
-    commands?: Command[],
   ) {
-    this._commands = commands ?? [];
-
-    if (scriptType === "background") {
-      this.listenActiveTabChange();
-    }
+    this.registerSystemCommands();
+    this.runScriptBasedSideEffects();
   }
 
-  private async onMessage(message: ISentMessage) {
-    const existed = this.findCommand(message.commandName);
+  public startListening(): void {
+    browser.runtime.onMessage.addListener(this.onMessage);
+  }
 
-    if (existed) {
-      const result = await existed.run(message);
+  public stopListening(): void {
+    browser.runtime.onMessage.removeListener(this.onMessage);
+  }
+
+  private async onMessage(message: ISentMessageContent) {
+    const existedCommand = this.findCommand(message.commandName);
+
+    if (existedCommand) {
+      const result = await existedCommand.run(message);
       this.sendResponse(message, result);
     }
   }
 
-  public start(): void {
-    browser.runtime.onMessage.addListener(this.onMessage);
-  }
-
-  public stop(): void {
-    browser.runtime.onMessage.removeListener(this.onMessage);
-  }
-
-  private sendResponse(message: ISentMessage, response: any) {
-    const responseMessage: ISentMessage = {
+  private sendResponse(message: ISentMessageContent, response: any) {
+    const responseMessage: ISentMessageContent = {
       commandName: message.commandName,
       isResponse: true,
       hash: message.hash,
@@ -46,26 +46,30 @@ export default class MessageSystem {
       payload: response,
     };
 
-    new NormalMessage(responseMessage).send();
+    new UnreplyableMessage(responseMessage).send();
   }
 
-  public findCommand(command: string): Command | undefined {
-    return this._commands.find(c => c.commandName === command);
+  public findCommand(command: string): ICommand | undefined {
+    return this._commands.find(c => c.name === command);
   }
 
-  public registerCommand(command: string, cb: FunctionalCommand): MessageSystem;
+  public registerCommand(command: string, cb: FunctionalCommand, options?: ICommandOptions): MessageSystem;
   public registerCommand(command: Command | Array<Command>): MessageSystem;
 
-  public registerCommand(command: Command | Array<Command> | string, cb?: FunctionalCommand): MessageSystem {
+  public registerCommand(
+    command: Command | Array<Command> | string,
+    cb?: FunctionalCommand,
+    options?: ICommandOptions
+  ): MessageSystem {
     if (typeof command === "string") {
       if (typeof cb === "undefined") {
         return this;
       }
 
-      const cmd: Command = {
-        commandName: command,
+      const cmd: Command = Command.create({
+        name: command,
         run: cb,
-      };
+      }, options);
 
       this._commands.push(cmd);
     } else {
@@ -79,17 +83,35 @@ export default class MessageSystem {
     return this;
   }
 
-  public deregisterCommand(command: string): MessageSystem {
-    this._commands = this._commands.filter((c) => c.commandName !== command);
+  public deregisterCommand(name: string): MessageSystem {
+    this._commands = this._commands.filter(
+      (c) => c.name !== name || c.removable
+    );
 
     return this;
   }
 
-  private listenActiveTabChange() {
-    browser.tabs.onActivated.addListener((activeInfo) => {
-      browser.tabs.get(activeInfo.tabId).then((tab) => {
-        TabManager.activeTab = tab;
-      });
-    });
+  private registerSystemCommands() {
+    switch (this.scriptType) {
+      case "background":
+        this.registerBackgroundScriptSystemCommands();
+        break;
+    }
+  }
+
+  private registerBackgroundScriptSystemCommands() {
+    const commands: Command[] = [
+      new GetActiveTabCommand(),
+    ];
+
+    this.registerCommand(commands);
+  }
+
+  private runScriptBasedSideEffects() {
+    switch (this.scriptType) {
+      case "background":
+        TabManager.instance.listenActiveTabChange();
+        break;
+    }
   }
 }
