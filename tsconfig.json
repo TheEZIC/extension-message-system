@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "baseUrl": "./",
     "target": "ES2020",
     "module": "commonjs",
     "strict": true,
@@ -16,7 +17,10 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": false,
-    "emitDecoratorMetadata": true
+    "declaration": true,
+    "emitDecoratorMetadata": true,
+    "outDir": "./dist"
   },
-  "exclude": ["dist"]
+  "include": ["index.ts", "./src/**/*ts"],
+  "exclude": ["dist", "node_modules"]
 }

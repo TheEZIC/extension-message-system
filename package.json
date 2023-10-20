@@ -1,13 +1,16 @@
 {
-  "name": "extensions-message-system",
-  "version": "1.0.0",
+  "name": "extension-message-system",
+  "version": "1.0.2",
   "description": "",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "build": "tsc",
+    "pub": "copy package.json dist && cd dist && npm publish",
+    "prepublishOnly": "npm run build"
+  },
   "keywords": [],
   "author": "TheEZIC",
   "license": "ISC",
-  "private": true,
   "dependencies": {
     "webextension-polyfill": "^0.10.0"
   },
